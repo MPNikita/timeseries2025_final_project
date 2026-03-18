@@ -34,7 +34,7 @@ try:
         import pytorch_lightning as pl  # type: ignore[no-redef]
 
     from pytorch_forecasting import TemporalFusionTransformer, TimeSeriesDataSet
-    from pytorch_forecasting.data import GroupNormalizer
+    from pytorch_forecasting.data import GroupNormalizer, NaNLabelEncoder
     from pytorch_forecasting.metrics import RMSE
 except Exception as exc:  # pragma: no cover - import guard for optional DL stack
     _TFT_IMPORT_ERROR = exc
@@ -43,6 +43,7 @@ except Exception as exc:  # pragma: no cover - import guard for optional DL stac
     TemporalFusionTransformer = None  # type: ignore[assignment]
     TimeSeriesDataSet = None  # type: ignore[assignment]
     GroupNormalizer = None  # type: ignore[assignment]
+    NaNLabelEncoder = None  # type: ignore[assignment]
     RMSE = None  # type: ignore[assignment]
 
 
@@ -127,6 +128,36 @@ def _params_digest(params: dict[str, Any]) -> str:
 def _safe_float32(series: pd.Series, fill_value: float = 0.0) -> pd.Series:
     """Fill missing values and cast to float32."""
     return series.fillna(fill_value).astype("float32")
+
+
+def _cast_for_pytorch_forecasting_categoricals(
+    fit_frame: pd.DataFrame,
+    horizon_frame: pd.DataFrame,
+    categorical_columns: list[str],
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Cast categorical columns to string-backed pandas categories.
+
+    `pytorch_forecasting` rejects numeric categoricals in `TimeSeriesDataSet`.
+    We therefore convert all declared categorical features to string categories
+    with a shared category vocabulary across fit/horizon frames.
+    """
+    fit_current = fit_frame.copy()
+    horizon_current = horizon_frame.copy()
+
+    fill_category = "0"
+    for column in categorical_columns:
+        fit_values = fit_current[column].fillna(fill_category).astype("string")
+        horizon_values = horizon_current[column].fillna(fill_category).astype("string")
+        categories = pd.Index(
+            pd.concat(
+                [fit_values, horizon_values, pd.Series([fill_category], dtype="string")],
+                ignore_index=True,
+            ).unique()
+        )
+        fit_current[column] = pd.Categorical(fit_values, categories=categories)
+        horizon_current[column] = pd.Categorical(horizon_values, categories=categories)
+
+    return fit_current, horizon_current
 
 
 def _build_tft_base_frame(
@@ -484,6 +515,12 @@ def _build_tft_datasets(
 
     fit_sorted = fit_frame.sort_values(["series_id", "time_idx"], ignore_index=True)
     horizon_sorted = horizon_frame.sort_values(["series_id", "time_idx"], ignore_index=True)
+    categorical_columns = STATIC_CATEGORICALS + TIME_VARYING_KNOWN_CATEGORICALS
+    fit_sorted, horizon_sorted = _cast_for_pytorch_forecasting_categoricals(
+        fit_sorted,
+        horizon_sorted,
+        categorical_columns=categorical_columns,
+    )
     inference_frame = pd.concat([fit_sorted, horizon_sorted], ignore_index=True).sort_values(
         ["series_id", "time_idx"],
         ignore_index=True,
@@ -494,18 +531,19 @@ def _build_tft_datasets(
     batch_size = int(dataset_config["batch_size"])
     num_workers = int(dataset_config.get("num_workers", 0))
 
+    categorical_fill: dict[str, str] = {}
+    for column in TIME_VARYING_KNOWN_CATEGORICALS:
+        observed = fit_sorted[column].astype("string")
+        if observed.empty:
+            categorical_fill[column] = "0"
+            continue
+        zero_present = observed.eq("0").any()
+        categorical_fill[column] = "0" if zero_present else str(observed.iloc[0])
+
     constant_fill = {
         "target_log": 0.0,
-        "onpromotion": 0,
-        "is_month_end": 0,
-        "is_payday": 0,
-        "is_holiday": 0,
-        "is_event": 0,
-        "is_additional": 0,
-        "is_bridge": 0,
-        "is_work_day": 0,
         "dcoilwtico": float(fit_sorted["dcoilwtico"].median()) if fit_sorted["dcoilwtico"].notna().any() else 0.0,
-    }
+    } | categorical_fill
 
     training = TimeSeriesDataSet(
         fit_sorted,
@@ -526,6 +564,7 @@ def _build_tft_datasets(
         add_target_scales=True,
         add_encoder_length=True,
         target_normalizer=GroupNormalizer(groups=["series_id"]),
+        categorical_encoders={column: NaNLabelEncoder(add_nan=True) for column in categorical_columns},
     )
 
     internal_val = TimeSeriesDataSet.from_dataset(

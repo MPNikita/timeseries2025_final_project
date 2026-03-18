@@ -59,3 +59,8 @@ kaggle.json
 
 # never commit Kaggle credentials
 kaggle.json
+
+# local helper artifacts
+build_favorita_notebook.py
+for_colab.ipynb
+local_tft_training.ipynb
