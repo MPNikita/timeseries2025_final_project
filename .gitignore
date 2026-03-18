@@ -1,0 +1,61 @@
+# --- OS / Editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# --- Virtual env / local secrets ---
+.venv/
+venv/
+.env
+.env.*
+kaggle.json
+
+# --- Project caches / training artifacts ---
+.cache/
+*.pkl
+*.pickle
+*.joblib
+*.parquet
+*.feather
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.log
+
+# --- Heavy data / archives / submissions ---
+*.csv
+*.csv.gz
+*.zip
+*.7z
+*.tar
+*.tar.gz
+*.gz
+
+# --- Keep only code/config/docs/notebooks ---
+!*.py
+!*.ipynb
+!*.md
+!*.txt
+!*.toml
+!*.yaml
+!*.yml
+!*.ini
+!*.cfg
+!*.json
+!.gitignore
+
+# never commit Kaggle credentials
+kaggle.json
