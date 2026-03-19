@@ -43,13 +43,11 @@ pip install -r requirements.txt
 
 3. Открыть [favorita.ipynb](favorita.ipynb) и выполнить ячейки.
 
-## Где что лежит (кратко)
+## Где что лежит
 
 - `results/report.pdf`: финальный отчет по HW3.
 - `favorita.ipynb`: основной демонстрационный ноутбук и отчетные графики/таблицы.
 - `src/favorita/*`: основная кодовая база (features, models, metrics, validation, io).
 - `src/configs.py`: дефолтные параметры моделей.
 - `submissions/`: готовые сабмиты и inference-результаты.
-- `.cache/favorita/`: кеши подготовки данных и экспериментов.
 - `artifacts_tft/`: TFT-чекпоинты и TensorBoard-логи.
-- `trash/`: архив/устаревшие служебные файлы.
