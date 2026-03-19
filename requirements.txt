@@ -6,19 +6,14 @@ pandas
 lightgbm
 catboost
 optuna
-scikit-learn
+
+# TFT (optional deep learning pipeline)
 torch
 lightning
 pytorch-forecasting
-tensorboard
 
-# Visualization
+# Notebook / EDA
 matplotlib
 seaborn
-
-# Notebook authoring and execution
-ipython
 ipykernel
 jupyterlab
-nbformat
-nbclient

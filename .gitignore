@@ -61,6 +61,10 @@ kaggle.json
 kaggle.json
 
 # local helper artifacts
-build_favorita_notebook.py
-for_colab.ipynb
-local_tft_training.ipynb
+notebooks/for_colab.ipynb
+notebooks/local_tft_training.ipynb
+trash/
+scripts/
+artifacts_tft/
+checkpoints/
+submissions/
